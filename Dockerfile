@@ -2,8 +2,7 @@ FROM node:20-alpine
 
 WORKDIR /application
 
-RUN yarn global add pm2 \
-    && yarn cache clean
+RUN npm install -g pm2
 
 ARG RUNTIME_USER=readability
 
@@ -16,10 +15,9 @@ RUN mkdir -p /home/${RUNTIME_USER} \
 USER ${RUNTIME_USER}
 
 COPY package.json .
-COPY yarn.lock    .
 
-RUN yarn install --prod \
-    && yarn cache clean
+RUN npm install --production \
+    && npm cache clean --force
 
 COPY pm2.json .
 COPY src      src

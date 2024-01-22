@@ -100,5 +100,5 @@ const version = require("fs")
   .split(" ")[0];
 
 app.listen(port, () =>
-  console.log(`Readability.js2 server v${version} listening on port ${port}!`),
+  console.log(`Readability.js server v${version} listening on port ${port}!`),
 );
