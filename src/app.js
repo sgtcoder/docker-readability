@@ -3,7 +3,7 @@ require("log-timestamp");
 
 // Express
 const app = require("express")();
-const bodyParser = require("body-parser").json();
+const bodyParser = require("body-parser").json({ limit: "50mb" });
 const port = 3000;
 
 // HTTP client
@@ -28,6 +28,27 @@ app.get("/", (req, res) => {
 
 app.post("/", bodyParser, (req, res) => {
   const url = req.body.url;
+  const html = req.body.html;
+
+  if (html) {
+    const sanitized = DOMPurify.sanitize(html, domPurifyOptions);
+
+    const dom = new JSDOM(sanitized, {
+      url: url,
+    });
+
+    const parsed = new Readability(dom.window.document).parse();
+
+    console.log("Fetched and parsed html successfully");
+
+    return res
+      .status(200)
+      .send({
+        url,
+        ...parsed,
+      })
+      .end();
+  }
 
   if (url === undefined || url === "") {
     return res
@@ -79,5 +100,5 @@ const version = require("fs")
   .split(" ")[0];
 
 app.listen(port, () =>
-  console.log(`Readability.js server v${version} listening on port ${port}!`)
+  console.log(`Readability.js2 server v${version} listening on port ${port}!`),
 );
