@@ -1,9 +1,11 @@
+// echo "" > /root/dockers/readability/app.js && nano /root/dockers/readability/app.js && restart_readability
+
 // Ensure console.log spits out timestamps
 require("log-timestamp");
 
 // Express
 const app = require("express")();
-const bodyParser = require("body-parser").json({ limit: "50mb" });
+const bodyParser = require("body-parser").json({ limit: "20mb" });
 const port = 3000;
 
 // HTTP client
@@ -15,9 +17,24 @@ const { Readability } = require("@mozilla/readability");
 const createDOMPurify = require("dompurify");
 const DOMPurify = createDOMPurify(new JSDOM("").window);
 
-// Not too happy to allow iframe, but it's the only way to get youtube vids
+// Attributes to Whitelist
+const WHITELISTED_ATTR = [
+  "content",
+  "datetime",
+  "itemprop",
+  "property",
+  "type",
+  "time",
+];
+
+// Tags to Whitelist
+const WHITELISTED_TAGS = ["iframe", "video", "meta"];
+
 const domPurifyOptions = {
-  ADD_TAGS: ["iframe", "video"],
+  ADD_ATTR: WHITELISTED_ATTR,
+  ADD_TAGS: WHITELISTED_TAGS,
+  WHOLE_DOCUMENT: true,
+  SANITIZE_DOM: false,
 };
 
 app.get("/", (req, res) => {
@@ -29,9 +46,25 @@ app.get("/", (req, res) => {
 app.post("/", bodyParser, (req, res) => {
   const url = req.body.url;
   const html = req.body.html;
+  const sanitize_html = req.body.sanitize_html;
+  var sanitized;
+
+  // Check if URL is set
+  if (url === undefined || url === "") {
+    return res
+      .status(400)
+      .send({
+        error: 'Send JSON, like so: {"url": "https://url/to/whatever"}',
+      })
+      .end();
+  }
 
   if (html) {
-    const sanitized = DOMPurify.sanitize(html, domPurifyOptions);
+    if (sanitize_html !== false) {
+      sanitized = DOMPurify.sanitize(html, domPurifyOptions);
+    } else {
+      sanitized = html;
+    }
 
     const dom = new JSDOM(sanitized, {
       url: url,
@@ -50,21 +83,16 @@ app.post("/", bodyParser, (req, res) => {
       .end();
   }
 
-  if (url === undefined || url === "") {
-    return res
-      .status(400)
-      .send({
-        error: 'Send JSON, like so: {"url": "https://url/to/whatever"}',
-      })
-      .end();
-  }
-
   console.log("Fetching " + url + "...");
 
   axios
     .get(url)
     .then((response) => {
-      const sanitized = DOMPurify.sanitize(response.data, domPurifyOptions);
+      if (sanitize_html !== false) {
+        sanitized = DOMPurify.sanitize(response.data, domPurifyOptions);
+      } else {
+        sanitized = response.data;
+      }
 
       const dom = new JSDOM(sanitized, {
         url: url,
